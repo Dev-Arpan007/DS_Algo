@@ -1,0 +1,205 @@
+#include<stdio.h>
+#include<stdlib.h>
+
+typedef struct Node{
+    int v;
+    int w;
+    struct Node* next;
+}Node;
+
+typedef struct KeyNode{
+    int val;
+    int wt;
+}KeyNode;
+
+
+void insertBegin(Node** arr, int src, int dest, int wt)
+{
+    Node* ptr =(Node*)malloc(sizeof(Node));
+    ptr->v = dest;
+    ptr->w = wt;
+    ptr->next = NULL;
+    if(arr[src]==NULL){
+        arr[src] = ptr;
+    }
+    else{
+        ptr->next = arr[src];
+        arr[src] = ptr;
+    }
+
+}
+
+Node** createGraph(int* num)
+{
+    FILE* fp = fopen("graph.txt","r");
+    if(fp==NULL)
+    {
+        printf("File not available!!!!\n");
+        return NULL;
+    }
+    int vertices = 0, i, edges=0, v1,v2,wt;
+    fscanf(fp, "%d", &vertices);
+    *num = vertices;
+    Node** arr = (Node**)malloc(vertices*sizeof(Node*));
+    for(i=0; i<vertices; i++)
+        arr[i]=NULL;
+    fscanf(fp,"%d",&edges);
+    for(i=0; i<edges; i++)
+    {
+        fscanf(fp,"%d",&v1);
+        fscanf(fp,"%d",&v2);
+        fscanf(fp,"%d",&wt);
+        insertBegin(arr,v1,v2,wt);
+        insertBegin(arr,v2,v1,wt);
+
+    }
+
+    return arr;
+
+}
+
+void printGraph(Node** list, int num)
+{
+    int i,j;
+    for(i=0; i<num; i++){
+        Node* temp = list[i];
+        printf("%d--->", i);
+        while(temp!=NULL)
+        {
+            printf("(%d, %d)---> ",temp->v, temp->w);
+            temp=temp->next;
+        }
+        printf("\n");
+    }
+}
+
+void heapify(KeyNode arr[], int i, int aSize, int* hSize){
+    int smallest =i;
+    int left = 2*i+1;
+    int right = 2*i+2;
+    if((left < *hSize) && (arr[left].wt < arr[smallest].wt))
+        smallest=left;
+    if((right < *hSize) && (arr[right].wt < arr[smallest].wt))
+        smallest=right;
+    if(smallest!=i){
+        KeyNode temp = arr[i];
+        arr[i]=arr[smallest];
+        arr[smallest] = temp;
+        heapify(arr, smallest, aSize, hSize);
+    }
+
+}
+
+int dequeue(KeyNode arr[], int aSize, int* hSize){
+    if(*hSize<1){
+        //printf("Heap underflow\n");
+        return -1;
+    }
+    int ret = arr[0].val;
+    arr[0]=arr[(*hSize)-1];
+    (*hSize)--;
+    heapify(arr,0,aSize,hSize);
+    return ret;
+}
+
+void decreaseKey(KeyNode arr[], int i, int aSize, int* hSize, int key){
+    if(i>= *hSize){
+        printf("Index out of bound\n");
+        return;
+    }
+    if(arr[i].wt <key){
+        arr[i].wt=key;
+        heapify(arr,i,aSize,hSize);
+    }
+    else{
+        arr[i].wt=key;
+        int index =i;
+        int parent = (index-1)/2;
+
+
+        while((index>0) && (arr[index].wt < arr[parent].wt)){
+            KeyNode temp = arr[index];
+            arr[index] = arr[parent];
+            arr[parent] = temp;
+            index =parent;
+            parent = (index - 1)/2;
+        }
+    }
+
+}
+
+void displayHeap(KeyNode arr[], int n)
+{
+    int i; 
+    if(n==0)
+    {
+        printf("No elements\n");
+        return;
+    }
+    for(i=0;i<n;i++){
+        printf("%d ",arr[i].wt);
+    }
+    printf("\n");
+}
+
+int findVertex(KeyNode arr[], int value, int* hSize){
+    int i=0, n=*hSize;
+    for(i=0;i<n;i++){
+        if(arr[i].val==value)
+            return i;
+    }
+    return -1;
+}
+
+
+int main()
+{
+    int num=0,i;
+    Node** ptr = createGraph(&num);
+    printGraph(ptr, num);
+    KeyNode key[num];
+    KeyNode parent[num];
+    int aSize=num,hSize=num;
+    key[0].val = 0;
+    key[0].wt = 0;
+    for(i=1;i<num;i++){
+        key[i].wt = 99999;
+        key[i].val = i;
+    }
+
+    for(i=(num/2-1); i>=0; i--){
+        heapify(key,i,aSize,&hSize);
+    }
+    displayHeap(key,hSize);
+    
+    int u = dequeue(key,aSize,&hSize);
+
+    while(u!= -1){
+
+        Node* t = ptr[u];
+        while(t!=NULL){
+            int ind = t->v;
+            int k =findVertex(key,ind,&hSize);
+            if((k!= -1) && (t->w < key[k].wt)){
+                parent[ind].val = u;
+                parent[ind].wt = t->w;
+               decreaseKey(key,k,aSize,&hSize,(t->w));
+
+            }
+            t=t->next;
+        }
+        u = dequeue(key,aSize,&hSize);
+    }
+    
+    printf("The MST is as follows: \n");
+    
+    printf("edge\t\t\tweight\n");
+    
+    for(i=1; i<num; i++){
+        printf("(%d-%d)\t\t\t %d\n", i, parent[i].val, parent[i].wt);
+    }
+
+
+
+    return 0;
+}
